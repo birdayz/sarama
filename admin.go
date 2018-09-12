@@ -71,6 +71,8 @@ type ClusterAdmin interface {
 	// This operation is supported by brokers with version 0.11.0.0 or higher.
 	DeleteACL(filter AclFilter, validateOnly bool) ([]MatchingAcl, error)
 
+	DescribeConsumerGroup(group string) (*GroupDescription, error)
+
 	// Close shuts down the admin and closes underlying client.
 	Close() error
 }
@@ -106,6 +108,26 @@ func (ca *clusterAdmin) Close() error {
 
 func (ca *clusterAdmin) Controller() (*Broker, error) {
 	return ca.client.Controller()
+}
+
+func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, error) {
+	controller, err := ca.Controller()
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := controller.DescribeGroups(&DescribeGroupsRequest{
+		Groups: []string{group},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(response.Groups) != 1 {
+		return nil, fmt.Errorf("Received unexpected number of results for request: %v", len(response.Groups))
+	}
+
+	return response.Groups[0], nil
 }
 
 func (ca *clusterAdmin) CreateTopic(topic string, detail *TopicDetail, validateOnly bool) error {
