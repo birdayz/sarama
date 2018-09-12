@@ -2,6 +2,7 @@ package sarama
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 )
 
@@ -71,8 +72,14 @@ type ClusterAdmin interface {
 	// This operation is supported by brokers with version 0.11.0.0 or higher.
 	DeleteACL(filter AclFilter, validateOnly bool) ([]MatchingAcl, error)
 
+	// Describe some group IDs in the cluster.
 	DescribeConsumerGroup(group string) (*GroupDescription, error)
 
+	// List the consumer groups available in the cluster.
+	ListConsumerGroups() (map[string]string, error)
+
+	// List the consumer group offsets available in the cluster.
+	ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*OffsetFetchResponse, error)
 	// Close shuts down the admin and closes underlying client.
 	Close() error
 }
@@ -110,6 +117,26 @@ func (ca *clusterAdmin) Controller() (*Broker, error) {
 	return ca.client.Controller()
 }
 
+func (ca *clusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*OffsetFetchResponse, error) {
+	// TODO handle error when topic not found better
+	controller, err := ca.Controller()
+	if err != nil {
+		return nil, err
+	}
+
+	version := int16(0)
+	if ca.conf.Version.IsAtLeast(V0_8_2_2) {
+		version = int16(1)
+	}
+
+	return controller.FetchOffset(&OffsetFetchRequest{
+		ConsumerGroup: group,
+		Version:       version,
+		partitions:    topicPartitions,
+	})
+
+}
+
 func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, error) {
 	controller, err := ca.Controller()
 	if err != nil {
@@ -128,6 +155,20 @@ func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, 
 	}
 
 	return response.Groups[0], nil
+}
+
+func (ca *clusterAdmin) ListConsumerGroups() (map[string]string, error) {
+	controller, err := ca.Controller()
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := controller.ListGroups(&ListGroupsRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Groups, nil
 }
 
 func (ca *clusterAdmin) CreateTopic(topic string, detail *TopicDetail, validateOnly bool) error {
