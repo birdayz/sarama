@@ -72,6 +72,8 @@ type ClusterAdmin interface {
 	// This operation is supported by brokers with version 0.11.0.0 or higher.
 	DeleteACL(filter AclFilter, validateOnly bool) ([]MatchingAcl, error)
 
+	DescribeTopic(topics []string) (metadata []*TopicMetadata, err error)
+
 	// Describe some group IDs in the cluster.
 	DescribeConsumerGroup(group string) (*GroupDescription, error)
 
@@ -117,6 +119,14 @@ func (ca *clusterAdmin) Controller() (*Broker, error) {
 	return ca.client.Controller()
 }
 
+func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadata, err error) {
+	controller, _ := ca.Controller()
+	response, _ := controller.GetMetadata(&MetadataRequest{
+		Topics: topics,
+	})
+
+	return response.Topics, nil
+}
 func (ca *clusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*OffsetFetchResponse, error) {
 	// TODO handle error when topic not found better
 	controller, err := ca.Controller()
