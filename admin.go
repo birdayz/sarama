@@ -125,8 +125,9 @@ func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadat
 		return nil, err
 	}
 	response, err := controller.GetMetadata(&MetadataRequest{
-		Version: 3, // This is required, otherwise IsInternal flag in response is always false
-		Topics:  topics,
+		Version:                5, // This is required, otherwise IsInternal flag in response is always false
+		Topics:                 topics,
+		AllowAutoTopicCreation: false, // Only works if > 3
 	})
 
 	if err != nil {
