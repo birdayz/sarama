@@ -120,10 +120,18 @@ func (ca *clusterAdmin) Controller() (*Broker, error) {
 }
 
 func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadata, err error) {
-	controller, _ := ca.Controller()
-	response, _ := controller.GetMetadata(&MetadataRequest{
-		Topics: topics,
+	controller, err := ca.Controller()
+	if err != nil {
+		return nil, err
+	}
+	response, err := controller.GetMetadata(&MetadataRequest{
+		Version: 3, // This is required, otherwise IsInternal flag in response is always false
+		Topics:  topics,
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	return response.Topics, nil
 }
