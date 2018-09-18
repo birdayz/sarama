@@ -176,18 +176,25 @@ func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, 
 	return response.Groups[0], nil
 }
 
-func (ca *clusterAdmin) ListConsumerGroups() (map[string]string, error) {
-	controller, err := ca.Controller()
-	if err != nil {
-		return nil, err
+func (ca *clusterAdmin) ListConsumerGroups() (results map[string]string, err error) {
+	results = make(map[string]string)
+
+	for _, b := range ca.client.Brokers() {
+		err = b.Open(ca.conf)
+		if err != nil {
+			continue
+		}
+		response, err := b.ListGroups(&ListGroupsRequest{})
+		if err != nil {
+			continue
+		}
+		for group, typ := range response.Groups {
+			results[group] = typ
+		}
+
 	}
 
-	response, err := controller.ListGroups(&ListGroupsRequest{})
-	if err != nil {
-		return nil, err
-	}
-
-	return response.Groups, nil
+	return
 }
 
 func (ca *clusterAdmin) CreateTopic(topic string, detail *TopicDetail, validateOnly bool) error {
