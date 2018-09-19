@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
 )
 
 // ClusterAdmin is the administrative client for Kafka, which supports managing and inspecting topics,
@@ -176,22 +177,37 @@ func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, 
 	return response.Groups[0], nil
 }
 
-func (ca *clusterAdmin) ListConsumerGroups() (results map[string]string, err error) {
-	results = make(map[string]string)
+func (ca *clusterAdmin) ListConsumerGroups() (allGroups map[string]string, err error) {
+	allGroups = make(map[string]string)
 
+	// Query brokers in parallel, since we have to query *all* brokers
+	groupMaps := make(chan map[string]string, len(ca.client.Brokers()))
+	wg := sync.WaitGroup{}
+	wg.Add(len(ca.client.Brokers()))
 	for _, b := range ca.client.Brokers() {
-		err = b.Open(ca.conf)
-		if err != nil {
-			continue
-		}
-		response, err := b.ListGroups(&ListGroupsRequest{})
-		if err != nil {
-			continue
-		}
-		for group, typ := range response.Groups {
-			results[group] = typ
-		}
+		go func(b *Broker, conf *Config) {
+			defer wg.Done()
+			_ = b.Open(conf)
+			response, err := b.ListGroups(&ListGroupsRequest{})
+			if err != nil {
+				return
+			}
+			groups := make(map[string]string)
+			for group, typ := range response.Groups {
+				groups[group] = typ
+			}
 
+			groupMaps <- groups
+
+		}(b, ca.conf)
+	}
+	wg.Wait()
+	close(groupMaps)
+
+	for groupMap := range groupMaps {
+		for group, protocolType := range groupMap {
+			allGroups[group] = protocolType
+		}
 	}
 
 	return
