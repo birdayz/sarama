@@ -149,17 +149,16 @@ func (ca *clusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions m
 		return nil, err
 	}
 
-	version := int16(0)
-	if ca.conf.Version.IsAtLeast(V0_8_2_2) {
-		version = int16(1)
+	request := &OffsetFetchRequest{
+		ConsumerGroup: group,
+		partitions:    topicPartitions,
 	}
 
-	return controller.FetchOffset(&OffsetFetchRequest{
-		ConsumerGroup: group,
-		Version:       version,
-		partitions:    topicPartitions,
-	})
+	if ca.conf.Version.IsAtLeast(V0_8_2_2) {
+		request.Version = 1
+	}
 
+	return controller.FetchOffset(request)
 }
 
 func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, error) {
