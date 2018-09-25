@@ -73,6 +73,7 @@ type ClusterAdmin interface {
 	// This operation is supported by brokers with version 0.11.0.0 or higher.
 	DeleteACL(filter AclFilter, validateOnly bool) ([]MatchingAcl, error)
 
+	// Describe some topics in the cluster
 	DescribeTopic(topics []string) (metadata []*TopicMetadata, err error)
 
 	// Describe some group IDs in the cluster.
@@ -83,6 +84,7 @@ type ClusterAdmin interface {
 
 	// List the consumer group offsets available in the cluster.
 	ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*OffsetFetchResponse, error)
+
 	// Close shuts down the admin and closes underlying client.
 	Close() error
 }
@@ -126,9 +128,9 @@ func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadat
 		return nil, err
 	}
 	response, err := controller.GetMetadata(&MetadataRequest{
-		Version:                5, // This is required, otherwise IsInternal flag in response is always false
+		Version:                4,
 		Topics:                 topics,
-		AllowAutoTopicCreation: false, // Only works if > 3
+		AllowAutoTopicCreation: false, // Only works if > 3. Also required Version > 3
 	})
 
 	if err != nil {
@@ -138,7 +140,6 @@ func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadat
 	return response.Topics, nil
 }
 func (ca *clusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*OffsetFetchResponse, error) {
-	// TODO handle error when topic not found better
 	controller, err := ca.client.Coordinator(group)
 	if err != nil {
 		return nil, err
