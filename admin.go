@@ -127,12 +127,16 @@ func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadat
 	if err != nil {
 		return nil, err
 	}
-	response, err := controller.GetMetadata(&MetadataRequest{
-		Version:                4,
+	request := &MetadataRequest{
 		Topics:                 topics,
-		AllowAutoTopicCreation: false, // Only works if > 3. Also required Version > 3
-	})
+		AllowAutoTopicCreation: false,
+	}
 
+	if ca.conf.Version.IsAtLeast(V0_11_0_0) {
+		request.Version = 4
+	}
+
+	response, err := controller.GetMetadata(request)
 	if err != nil {
 		return nil, err
 	}
