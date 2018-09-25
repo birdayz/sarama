@@ -185,17 +185,23 @@ func (ca *clusterAdmin) ListConsumerGroups() (allGroups map[string]string, err e
 	allGroups = make(map[string]string)
 
 	// Query brokers in parallel, since we have to query *all* brokers
-	groupMaps := make(chan map[string]string, len(ca.client.Brokers()))
+	n := len(ca.client.Brokers())
+	groupMaps := make(chan map[string]string, n)
+	errors := make(chan error, n)
 	wg := sync.WaitGroup{}
-	wg.Add(len(ca.client.Brokers()))
+
 	for _, b := range ca.client.Brokers() {
+		wg.Add(1)
 		go func(b *Broker, conf *Config) {
 			defer wg.Done()
-			_ = b.Open(conf)
+			_ = b.Open(conf) // Ensure that broker is opened
+
 			response, err := b.ListGroups(&ListGroupsRequest{})
 			if err != nil {
+				errors <- err
 				return
 			}
+
 			groups := make(map[string]string)
 			for group, typ := range response.Groups {
 				groups[group] = typ
@@ -205,8 +211,10 @@ func (ca *clusterAdmin) ListConsumerGroups() (allGroups map[string]string, err e
 
 		}(b, ca.conf)
 	}
+
 	wg.Wait()
 	close(groupMaps)
+	close(errors)
 
 	for groupMap := range groupMaps {
 		for group, protocolType := range groupMap {
@@ -214,6 +222,9 @@ func (ca *clusterAdmin) ListConsumerGroups() (allGroups map[string]string, err e
 		}
 	}
 
+	// Intentionally return only the first error. It is guaranteed that at
+	// least one error is returned if any broker fails.
+	err = <-errors
 	return
 }
 
