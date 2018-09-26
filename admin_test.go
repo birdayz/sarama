@@ -577,7 +577,36 @@ func TestDescribeTopic(t *testing.T) {
 }
 
 func TestDescribeConsumerGroup(t *testing.T) {
-	// TODO
+	seedBroker := NewMockBroker(t, 1)
+	defer seedBroker.Close()
+
+	expectedGroupID := "my-group"
+
+	seedBroker.SetHandlerByMap(map[string]MockResponse{
+		"DescribeGroupsRequest": NewMockDescribeGroupsResponse(t).
+			SetGroupID(expectedGroupID),
+		"MetadataRequest": NewMockMetadataResponse(t).
+			SetController(seedBroker.BrokerID()).
+			SetBroker(seedBroker.Addr(), seedBroker.BrokerID()),
+		"FindCoordinatorRequest": NewMockFindCoordinatorResponse(t).SetCoordinator(CoordinatorGroup, expectedGroupID, seedBroker),
+	})
+
+	config := NewConfig()
+	config.Version = V1_0_0_0
+
+	admin, err := NewClusterAdmin([]string{seedBroker.Addr()}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := admin.DescribeConsumerGroup(expectedGroupID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.GroupId != expectedGroupID {
+		t.Fatalf("Expected groupID %v, got %v", expectedGroupID, result.GroupId)
+	}
 }
 
 func TestListConsumerGroups(t *testing.T) {

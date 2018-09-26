@@ -66,6 +66,34 @@ func (mc *MockSequence) For(reqBody versionedDecoder) (res encoder) {
 	return res
 }
 
+type MockDescribeGroupsResponse struct {
+	groupID string
+	t       TestReporter
+}
+
+func NewMockDescribeGroupsResponse(t TestReporter) *MockDescribeGroupsResponse {
+	return &MockDescribeGroupsResponse{}
+}
+
+func (m *MockDescribeGroupsResponse) SetGroupID(groupID string) *MockDescribeGroupsResponse {
+	m.groupID = groupID
+	return m
+}
+
+func (m *MockDescribeGroupsResponse) For(reqBody versionedDecoder) encoder {
+	_ = reqBody.(*DescribeGroupsRequest)
+	// TODO mock use map and return group of map
+	response := &DescribeGroupsResponse{}
+	group := &GroupDescription{
+		GroupId: m.groupID,
+	}
+
+	response.Groups = make([]*GroupDescription, 0)
+	response.Groups = append(response.Groups, group)
+
+	return response
+}
+
 // MockMetadataResponse is a `MetadataResponse` builder.
 type MockMetadataResponse struct {
 	controllerID int32
