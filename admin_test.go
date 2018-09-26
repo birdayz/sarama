@@ -575,3 +575,15 @@ func TestDescribeTopic(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDescribeConsumerGroup(t *testing.T) {
+	// TODO
+}
+
+func TestListConsumerGroups(t *testing.T) {
+	// TODO
+}
+
+func TestListConsumerGroupOffsets(t *testing.T) {
+	// TODO
+}
