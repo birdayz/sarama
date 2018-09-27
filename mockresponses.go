@@ -91,13 +91,17 @@ func (m *MockListGroupsResponse) AddGroup(groupID, protocolType string) *MockLis
 	m.groups[groupID] = protocolType
 	return m
 }
+
 type MockDescribeGroupsResponse struct {
 	groups map[string]*GroupDescription
 	t      TestReporter
 }
 
 func NewMockDescribeGroupsResponse(t TestReporter) *MockDescribeGroupsResponse {
-	return &MockDescribeGroupsResponse{groups: make(map[string]*GroupDescription)}
+	return &MockDescribeGroupsResponse{
+		t:      t,
+		groups: make(map[string]*GroupDescription),
+	}
 }
 
 func (m *MockDescribeGroupsResponse) AddGroupDescription(groupID string, description *GroupDescription) *MockDescribeGroupsResponse {
