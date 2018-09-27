@@ -67,29 +67,35 @@ func (mc *MockSequence) For(reqBody versionedDecoder) (res encoder) {
 }
 
 type MockDescribeGroupsResponse struct {
-	groupID string
-	t       TestReporter
+	groups map[string]*GroupDescription
+	t      TestReporter
 }
 
 func NewMockDescribeGroupsResponse(t TestReporter) *MockDescribeGroupsResponse {
-	return &MockDescribeGroupsResponse{}
+	return &MockDescribeGroupsResponse{groups: make(map[string]*GroupDescription)}
 }
 
-func (m *MockDescribeGroupsResponse) SetGroupID(groupID string) *MockDescribeGroupsResponse {
-	m.groupID = groupID
+func (m *MockDescribeGroupsResponse) AddGroupDescription(groupID string, description *GroupDescription) *MockDescribeGroupsResponse {
+	m.groups[groupID] = description
 	return m
 }
 
 func (m *MockDescribeGroupsResponse) For(reqBody versionedDecoder) encoder {
-	_ = reqBody.(*DescribeGroupsRequest)
-	// TODO mock use map and return group of map
-	response := &DescribeGroupsResponse{}
-	group := &GroupDescription{
-		GroupId: m.groupID,
-	}
+	request := reqBody.(*DescribeGroupsRequest)
 
-	response.Groups = make([]*GroupDescription, 0)
-	response.Groups = append(response.Groups, group)
+	response := &DescribeGroupsResponse{}
+	for _, requestedGroup := range request.Groups {
+		if group, ok := m.groups[requestedGroup]; ok {
+			response.Groups = append(response.Groups, group)
+		} else {
+			// Mimic real kafka - if a group doesn't exist, return
+			// an entry with state "Dead"
+			response.Groups = append(response.Groups, &GroupDescription{
+				GroupId: requestedGroup,
+				State:   "Dead",
+			})
+		}
+	}
 
 	return response
 }

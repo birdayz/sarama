@@ -583,8 +583,9 @@ func TestDescribeConsumerGroup(t *testing.T) {
 	expectedGroupID := "my-group"
 
 	seedBroker.SetHandlerByMap(map[string]MockResponse{
-		"DescribeGroupsRequest": NewMockDescribeGroupsResponse(t).
-			SetGroupID(expectedGroupID),
+		"DescribeGroupsRequest": NewMockDescribeGroupsResponse(t).AddGroupDescription(expectedGroupID, &GroupDescription{
+			GroupId: expectedGroupID,
+		}),
 		"MetadataRequest": NewMockMetadataResponse(t).
 			SetController(seedBroker.BrokerID()).
 			SetBroker(seedBroker.Addr(), seedBroker.BrokerID()),
