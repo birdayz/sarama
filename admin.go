@@ -185,12 +185,12 @@ func (ca *clusterAdmin) ListConsumerGroups() (allGroups map[string]string, err e
 	allGroups = make(map[string]string)
 
 	// Query brokers in parallel, since we have to query *all* brokers
-	n := len(ca.client.Brokers())
-	groupMaps := make(chan map[string]string, n)
-	errors := make(chan error, n)
+	brokers := ca.client.Brokers()
+	groupMaps := make(chan map[string]string, len(brokers))
+	errors := make(chan error, len(brokers))
 	wg := sync.WaitGroup{}
 
-	for _, b := range ca.client.Brokers() {
+	for _, b := range brokers {
 		wg.Add(1)
 		go func(b *Broker, conf *Config) {
 			defer wg.Done()
