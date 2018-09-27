@@ -222,8 +222,7 @@ func (ca *clusterAdmin) ListConsumerGroups() (allGroups map[string]string, err e
 		}
 	}
 
-	// Intentionally return only the first error. It is guaranteed that at
-	// least one error is returned if any broker fails.
+	// Intentionally return only the first error for simplicity
 	err = <-errors
 	return
 }
