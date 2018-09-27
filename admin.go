@@ -144,7 +144,7 @@ func (ca *clusterAdmin) DescribeTopic(topics []string) (metadata []*TopicMetadat
 	return response.Topics, nil
 }
 func (ca *clusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*OffsetFetchResponse, error) {
-	controller, err := ca.client.Coordinator(group)
+	coordinator, err := ca.client.Coordinator(group)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (ca *clusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions m
 		request.Version = 1
 	}
 
-	return controller.FetchOffset(request)
+	return coordinator.FetchOffset(request)
 }
 
 func (ca *clusterAdmin) DescribeConsumerGroup(group string) (*GroupDescription, error) {
