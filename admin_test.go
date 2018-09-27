@@ -616,7 +616,114 @@ func TestDescribeConsumerGroup(t *testing.T) {
 }
 
 func TestListConsumerGroups(t *testing.T) {
-	// TODO
+	seedBroker := NewMockBroker(t, 1)
+	defer seedBroker.Close()
+
+	seedBroker.SetHandlerByMap(map[string]MockResponse{
+		"MetadataRequest": NewMockMetadataResponse(t).
+			SetController(seedBroker.BrokerID()).
+			SetBroker(seedBroker.Addr(), seedBroker.BrokerID()),
+		"ListGroupsRequest": NewMockListGroupsRequest(t).
+			AddGroup("my-group", "consumer"),
+	})
+
+	config := NewConfig()
+	config.Version = V1_0_0_0
+
+	admin, err := NewClusterAdmin([]string{seedBroker.Addr()}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	groups, err := admin.ListConsumerGroups()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(groups) != 1 {
+		t.Fatalf("Expected %v results, got %v", 1, len(groups))
+	}
+
+	protocolType, ok := groups["my-group"]
+
+	if !ok {
+		t.Fatal("Expected group to be returned, but it did not")
+	}
+
+	if protocolType != "consumer" {
+		t.Fatalf("Expected protocolType %v, got %v", "consumer", protocolType)
+	}
+
+	err = admin.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestListConsumerGroupsMultiBroker(t *testing.T) {
+	seedBroker := NewMockBroker(t, 1)
+	defer seedBroker.Close()
+
+	secondBroker := NewMockBroker(t, 2)
+	defer secondBroker.Close()
+
+	firstGroup := "first"
+	secondGroup := "second"
+	nonExistingGroup := "non-existing-group"
+
+	seedBroker.SetHandlerByMap(map[string]MockResponse{
+		"MetadataRequest": NewMockMetadataResponse(t).
+			SetController(seedBroker.BrokerID()).
+			SetBroker(seedBroker.Addr(), seedBroker.BrokerID()).
+			SetBroker(secondBroker.Addr(), secondBroker.BrokerID()),
+		"ListGroupsRequest": NewMockListGroupsRequest(t).
+			AddGroup(firstGroup, "consumer"),
+	})
+
+	secondBroker.SetHandlerByMap(map[string]MockResponse{
+		"MetadataRequest": NewMockMetadataResponse(t).
+			SetController(seedBroker.BrokerID()).
+			SetBroker(seedBroker.Addr(), seedBroker.BrokerID()).
+			SetBroker(secondBroker.Addr(), secondBroker.BrokerID()),
+		"ListGroupsRequest": NewMockListGroupsRequest(t).
+			AddGroup(secondGroup, "consumer"),
+	})
+
+	config := NewConfig()
+	config.Version = V1_0_0_0
+
+	admin, err := NewClusterAdmin([]string{seedBroker.Addr()}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	groups, err := admin.ListConsumerGroups()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(groups) != 2 {
+		t.Fatalf("Expected %v results, got %v", 1, len(groups))
+	}
+
+	if _, found := groups[firstGroup]; !found {
+		t.Fatalf("Expected group %v to be present in result set, but it isn't", firstGroup)
+	}
+
+	if _, found := groups[secondGroup]; !found {
+		t.Fatalf("Expected group %v to be present in result set, but it isn't", secondGroup)
+	}
+
+	if _, found := groups[nonExistingGroup]; found {
+		t.Fatalf("Expected group %v to not exist, but it exists", nonExistingGroup)
+	}
+
+	err = admin.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
 func TestListConsumerGroupOffsets(t *testing.T) {
