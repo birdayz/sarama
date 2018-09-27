@@ -608,6 +608,11 @@ func TestDescribeConsumerGroup(t *testing.T) {
 	if result.GroupId != expectedGroupID {
 		t.Fatalf("Expected groupID %v, got %v", expectedGroupID, result.GroupId)
 	}
+
+	err = admin.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestListConsumerGroups(t *testing.T) {
