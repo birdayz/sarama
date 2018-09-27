@@ -727,5 +727,49 @@ func TestListConsumerGroupsMultiBroker(t *testing.T) {
 }
 
 func TestListConsumerGroupOffsets(t *testing.T) {
-	// TODO
+	seedBroker := NewMockBroker(t, 1)
+	defer seedBroker.Close()
+
+	group := "my-group"
+	topic := "my-topic"
+	partition := int32(0)
+	expectedOffset := int64(0)
+
+	seedBroker.SetHandlerByMap(map[string]MockResponse{
+		"OffsetFetchRequest": NewMockOffsetFetchResponse(t).SetOffset(group, "my-topic", partition, expectedOffset, "", ErrNoError),
+		"MetadataRequest": NewMockMetadataResponse(t).
+			SetController(seedBroker.BrokerID()).
+			SetBroker(seedBroker.Addr(), seedBroker.BrokerID()),
+		"FindCoordinatorRequest": NewMockFindCoordinatorResponse(t).SetCoordinator(CoordinatorGroup, group, seedBroker),
+	})
+
+	config := NewConfig()
+	config.Version = V1_0_0_0
+
+	admin, err := NewClusterAdmin([]string{seedBroker.Addr()}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response, err := admin.ListConsumerGroupOffsets(group, map[string][]int32{
+		topic: []int32{0},
+	})
+	if err != nil {
+		t.Fatalf("ListConsumerGroupOffsets failed with error %v", err)
+	}
+
+	block := response.GetBlock(topic, partition)
+	if block == nil {
+		t.Fatalf("Expected block for topic %v and partition %v to exist, but it doesn't", topic, partition)
+	}
+
+	if block.Offset != expectedOffset {
+		t.Fatalf("Expected offset %v, got %v", expectedOffset, block.Offset)
+	}
+
+	err = admin.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
